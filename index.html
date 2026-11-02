@@ -102,7 +102,7 @@ async function poll(){ if(!room)return; const d=await load(); const s=JSON.strin
 
 /* ===== PANTALLAS ===== */
 const app=document.getElementById("app");
-const eq=()=>S&&S.equipos?S.equipos:{};
+const eq=()=>{const q=(S&&S.equipos)||{},o={};Object.keys(q).forEach(k=>{if(q[k])o[k]=q[k]});return o};
 const teams=()=>Object.keys(eq()).map(Number).sort();
 function home(){
   const q=new URLSearchParams(location.search).get("sala")||"";
