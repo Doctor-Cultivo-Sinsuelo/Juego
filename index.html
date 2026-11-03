@@ -193,21 +193,29 @@ const CATS=Object.keys(RETOS);
 const CID=localStorage.cid||(localStorage.cid=Math.random().toString(36).slice(2));
 let room=null,role=null,myTeam=null,S=null,sig="",rolling=false,zoom=false;
 async function load(){
-  try{ if(DB_URL){const r=await fetch(`${DB_URL}/salas/${room}.json`);return await r.json();}
+  try{ if(DB_URL){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),7000);
+      try{const r=await fetch(`${DB_URL}/salas/${room}.json`,{signal:ac.signal,cache:"no-store"});return await r.json();}finally{clearTimeout(tm)}}
   return JSON.parse(localStorage.getItem("sala_"+room)||"null");}catch(e){return S}
 }
 async function upd(o){
-  if(DB_URL){await fetch(`${DB_URL}/salas/${room}.json`,{method:"PATCH",body:JSON.stringify(o)});}
+  if(DB_URL){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),9000);
+    try{await fetch(`${DB_URL}/salas/${room}.json`,{method:"PATCH",body:JSON.stringify(o),signal:ac.signal});}catch(e){console.error("upd",e)}finally{clearTimeout(tm)}}
   else{const d=JSON.parse(localStorage.getItem("sala_"+room)||"{}");
     for(const k in o){const ps=k.split("/");let n=d;for(let i=0;i<ps.length-1;i++)n=n[ps[i]]=n[ps[i]]||{};
       if(o[k]===null)delete n[ps.at(-1)];else n[ps.at(-1)]=o[k];}
     localStorage.setItem("sala_"+room,JSON.stringify(d));}
   S=await load();draw(true);
 }
-async function poll(){ if(!room)return; const d=await load(); const s=JSON.stringify(d); if(s!==sig){S=d;draw();}
-  const f=S&&S.estado&&S.estado.efecto; // respaldo: si quien movió cerró la app, el juez completa el efecto
-  if(f){if(efKey!==f.t){efKey=f.t;efSeen=Date.now()}else if(role==="juez"&&Date.now()-efSeen>6000)finEfecto();} else efKey=0;
+async function poll(){ if(!room)return;
+  try{ const d=await load(); const s=JSON.stringify(d); if(s!==sig){S=d;draw();}
+    const f=S&&S.estado&&S.estado.efecto; // respaldo: si quien movió cerró la app, el juez completa el efecto
+    if(f){if(efKey!==f.t){efKey=f.t;efSeen=Date.now()}else if(role==="juez"&&Date.now()-efSeen>6000)finEfecto();} else efKey=0;
+  }catch(e){console.error("poll",e);showErr(e)}
   setTimeout(poll,DB_URL?1200:500); }
+function showErr(e){let t=document.getElementById("errBox");if(!t){t=document.createElement("div");t.id="errBox";t.style.cssText="position:fixed;left:6px;right:6px;bottom:6px;z-index:120;background:#8f0a1e;color:#fff;font-size:12px;padding:6px 8px;border-radius:8px;pointer-events:none;opacity:.92";document.body.appendChild(t)}
+  t.textContent="⚠ Error: "+(e&&e.message||e);clearTimeout(t._h);t._h=setTimeout(()=>t.remove(),9000)}
+window.addEventListener("error",ev=>showErr(ev.message));
+(function(){const v=document.createElement("div");v.textContent="v6";v.style.cssText="position:fixed;right:6px;bottom:3px;z-index:3;font-size:10px;color:#fff;opacity:.35;pointer-events:none";document.body.appendChild(v)})();
 
 /* ===== PANTALLAS ===== */
 const app=document.getElementById("app");
