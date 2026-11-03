@@ -284,7 +284,8 @@ function draw(force){
     const link=location.origin&&location.origin!=="null"?`${location.origin}${location.pathname}?sala=${room}`:"";
     h=`<h1>👨‍⚖️ Juez · Sala <span style="letter-spacing:3px">${room}</span></h1>
     <div class="card"><div class="row"><small>Equipos entran con el código o escaneando:</small></div>
-    <div class="row"><div id="qr" style="background:#fff;padding:6px;border-radius:8px;min-width:96px;min-height:96px"></div></div><small style="word-break:break-all">${link}</small></div>
+    <div class="row"><div id="qr" style="background:#fff;padding:6px;border-radius:8px;min-width:96px;min-height:96px"></div></div><small style="word-break:break-all">${link}</small>
+    <div class="row"><button class="g" onclick="waShare()">📲 Mandar por WhatsApp</button></div></div>
     ${E.ganador?`<div class="card big">🏆 ¡Ganó el Equipo ${E.ganador}! <button class="y" onclick="upd({'estado/ganador':null,'estado/reto':null,'estado/dado':null,'estado/mover':null,'estado/efecto':null,'estado/puedeTirar':true,'equipos':Object.fromEntries(teams().map(n=>[n,{...eq()[n],pos:0}]))})">Reiniciar</button></div>`:""}
     ${turnoBanner()}
     <div class="card"><div class="row">${CATS.map((c,i)=>`<button onclick="pedir(${i})">${c}</button>`).join("")}</div>${retoHTML(true)}
@@ -313,6 +314,12 @@ function draw(force){
   const w=document.getElementById("wrap"); if(w){w.scrollLeft=sx;w.scrollTop=sy;}
   if(role==="juez")qr();
   diceSync(E);initDrag();celebrar(E);
+}
+function waShare(){
+  if(!location.origin||location.origin==="null"){alert("Sube el juego a internet para poder compartir el link.");return}
+  const link=`${location.origin}${location.pathname}?sala=${room}`;
+  const msg=`🎄 ¡Juega Posada conmigo! Entra a la sala ${room}:\n${link}`;
+  window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
 }
 function qr(){
   const box=document.getElementById("qr"),link=`${location.origin}${location.pathname}?sala=${room}`; if(!box||location.origin==="null")return;
