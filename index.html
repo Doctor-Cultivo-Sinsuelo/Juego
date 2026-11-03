@@ -20,6 +20,10 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:130px;text-tra
 #board img{display:block;width:100%}
 .tk{position:absolute;width:6.4%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,3.6vw,30px);border:3px solid;background:#fffd;transform:translate(-50%,-50%);transition:left .8s,top .8s;z-index:2}
 .big{font-size:20px;font-weight:800;text-align:center}
+.dest{position:absolute;width:8.5%;aspect-ratio:1;border-radius:50%;border:4px dashed #fff;background:#f5b80066;transform:translate(-50%,-50%);animation:pl 1s infinite;pointer-events:none;z-index:1}
+@keyframes pl{50%{transform:translate(-50%,-50%) scale(1.25)}}
+.ini{position:absolute;transform:translate(-50%,-50%);font-weight:800;font-size:clamp(9px,2.4vw,15px);padding:1px 7px;border-radius:10px;border:2px solid #fff;z-index:1;pointer-events:none}
+.drag{touch-action:none;cursor:grab;z-index:5;box-shadow:0 0 0 5px #fff,0 0 18px 8px #f5b800}
 #dado{font-size:90px;text-align:center;line-height:1}
 .badge{display:inline-block;border-radius:8px;padding:2px 8px;font-weight:800;color:#222}
 .ans{background:#f5b800;color:#222;border-radius:10px;padding:8px;margin:6px 0;font-weight:700}
@@ -41,7 +45,7 @@ const RING=[[447,65],[355,65],[270,65],[185,65],[100,67],[100,150],[100,225],[10
 const EFFECT={9:4,10:-3,16:2,17:-2,18:-3,19:-3}; // índice del anillo -> casillas
 const START={1:0,2:7,3:14,4:21};               // cada equipo sale de uno de los 4 INICIO
 const SPOKE={1:[[447,150],[447,230]],2:[[190,315],[270,315]],3:[[447,515],[447,440]],4:[[720,315],[640,315]]};
-const META=[457,330], LAST=30;
+const META=[457,330], LAST=31; // 0=INICIO, 1-27 vuelta, 28=de nuevo en su INICIO, 29-30 camino al centro, 31=META
 const COLORS={1:"#e53935",2:"#43a047",3:"#1e88e5",4:"#fdd835"};
 const AVATARS=["🎅","⛄","🐧","🦌","🎄","🧝","🐻","🎁"];
 const AV3={};
@@ -50,7 +54,7 @@ const FACEIMG={"cat": ["data:image/webp;base64,UklGRnwSAABXRUJQVlA4WAoAAAAQAAAAf
 const FACE_NAMES=["Sorpresa","Conocimiento","Películas","Adivina quién soy","Música","Conocimiento"];
 const FACES=["⚀","⚁","⚂","⚃","⚄","⚅"];
 function cell(team,p){ // casilla (en %) del equipo en la posición p
-  let xy; if(p<28) xy=RING[(START[team]+p)%28]; else if(p<30) xy=SPOKE[team][p-28]; else xy=META;
+  let xy; if(p<=28) xy=RING[(START[team]+p)%28]; else if(p<31) xy=SPOKE[team][p-29]; else xy=META;
   return [CX(xy[0]),CY(xy[1])];
 }
 function applyEffect(team,p){ if(p<28){const e=EFFECT[(START[team]+p)%28]; if(e) return Math.max(0,Math.min(LAST,p+e));} return p; }
@@ -148,7 +152,10 @@ function setA(a){window.pa=a; const n=myTeam||pt||1; elegir(n,a);}
 
 function boardHTML(){
   const tk=teams().map((n,i)=>{const e=eq()[n],[x,y]=cell(n,e.pos||0);
-    return `<div class="tk" style="left:${x+(i%2?1.2:-1.2)}%;top:${y}%;border-color:${COLORS[n]}">${avH(e.av,0)}</div>`}).join("");
+    const mv=S.estado.mover&&S.estado.mover.eq===n&&e.id===CID&&role==="equipo";
+    return `<div ${mv?'id="mytk"':""} class="tk${mv?" drag":""}" style="left:${x+(i%2?1.2:-1.2)}%;top:${y}%;border-color:${COLORS[n]}">${avH(e.av,0)}</div>`}).join("")
+    +[1,2,3,4].map(n=>{const d=cell(n,0);return `<div class="ini" style="left:${d[0]}%;top:${d[1]-5.2}%;background:${COLORS[n]};color:${n==4?"#222":"#fff"}">E${n}</div>`}).join("")
+    +(S.estado.mover?(()=>{const d=cell(S.estado.mover.eq,S.estado.mover.to);return `<div class="dest" style="left:${d[0]}%;top:${d[1]}%"></div>`})():"");
   return `<div id="wrap"><div id="board" style="width:${zoom?220:100}%"><img src="data:image/webp;base64,${BOARD}" alt="Tablero">${tk}</div></div>
   <div class="row"><button class="s" onclick="zoom=!zoom;draw(true)">🔍 ${zoom?"Ver completo":"Acercar"}</button></div>`;
 }
@@ -174,16 +181,30 @@ async function tirar(){
 }
 function acerto(){
   const E=S.estado,t=E.turno,e=eq()[t],n=(E.dado&&E.dado.eq===t)?E.dado.n:0;
-  const p2=applyEffect(t,Math.min(LAST,(e.pos||0)+n)),ts=teams(),nx=ts.find(x=>x>t)||ts[0];
-  const o={["equipos/"+t+"/pos"]:p2,"estado/turno":nx,"estado/reto":null,"estado/dado":null,"estado/puedeTirar":true};
-  if(p2>=LAST)o["estado/ganador"]=t; upd(o);
+  if(!n)return nextTurn();
+  upd({"estado/mover":{eq:t,to:Math.min(LAST,(e.pos||0)+n)},"estado/puedeTirar":false});
+}
+function finMove(){
+  const E=S.estado,m=E.mover;if(!m)return;const t=m.eq,p2=applyEffect(t,m.to),ts=teams(),nx=ts.find(x=>x>t)||ts[0];
+  const o={["equipos/"+t+"/pos"]:p2,"estado/turno":nx,"estado/reto":null,"estado/dado":null,"estado/mover":null,"estado/puedeTirar":true};
+  if(p2>=LAST)o["estado/ganador"]=t;upd(o);
+}
+let dragging=false;
+function initDrag(){
+  const tk=document.getElementById("mytk"),bd=document.getElementById("board");if(!tk||!bd||!S.estado.mover)return;
+  const m=S.estado.mover,d=cell(m.eq,m.to);
+  tk.onpointerdown=e=>{dragging=true;tk.setPointerCapture(e.pointerId);tk.style.transition="none";e.preventDefault()};
+  tk.onpointermove=e=>{if(!dragging)return;const r=bd.getBoundingClientRect();tk.style.left=(e.clientX-r.left)/r.width*100+"%";tk.style.top=(e.clientY-r.top)/r.height*100+"%"};
+  tk.onpointerup=tk.onpointercancel=e=>{if(!dragging)return;dragging=false;const r=bd.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*100,py=(e.clientY-r.top)/r.height*100;
+    if(Math.hypot(px-d[0],(py-d[1])*r.height/r.width)<5.5)finMove();else draw(true)};
 }
 function nextTurn(){const ts=teams();if(!ts.length)return;const t=S.estado.turno;const n=ts.find(x=>x>t)||ts[0];
-  upd({"estado/turno":n,"estado/reto":null,"estado/dado":null,"estado/puedeTirar":true});}
+  upd({"estado/turno":n,"estado/reto":null,"estado/dado":null,"estado/mover":null,"estado/puedeTirar":true});}
 function pedir(c){upd({"estado/reto":{c,i:Math.random()*RETOS[CATS[c]].length|0},"estado/puedeTirar":false});}
 function ajustar(n,d){const e=eq()[n];upd({["equipos/"+n+"/pos"]:Math.max(0,Math.min(LAST,e.pos+d))});}
 
 function draw(force){
+  if(dragging)return;
   const s=JSON.stringify(S); if(!force&&s===sig)return; sig=s;
   if(!room){home();return;}
   const keep=document.getElementById("wrap"); const sx=keep?keep.scrollLeft:0, sy=keep?keep.scrollTop:0;
@@ -197,7 +218,8 @@ function draw(force){
     ${E.ganador?`<div class="card big">🏆 ¡Ganó el Equipo ${E.ganador}! <button class="y" onclick="upd({'estado/ganador':null,'estado/reto':null,'estado/puedeTirar':false,'equipos':Object.fromEntries(teams().map(n=>[n,{...eq()[n],pos:0}]))})">Reiniciar</button></div>`:""}
     ${turnoBanner()}
     <div class="card"><div class="row">${CATS.map((c,i)=>`<button onclick="pedir(${i})">${c}</button>`).join("")}</div>${retoHTML(true)}
-     <div class="row"><button class="g" ${E.reto&&!E.puedeTirar&&E.turno?"":"disabled"} onclick="acerto()">✅ Acertó (avanza)</button>
+     <div class="row"><button class="g" ${E.reto&&!E.puedeTirar&&E.turno&&!E.mover?"":"disabled"} onclick="acerto()">✅ Acertó (avanza)</button>
+     <button class="y" ${E.mover?"":"disabled"} onclick="finMove()">➡️ Mover por ellos</button>
      <button class="s" onclick="nextTurn()">❌ Falló / Siguiente</button></div></div>
     ${dadoHTML()}${E.dado&&E.dado.efecto?`<div class="big">${E.dado.efecto>0?"¡Avanza "+E.dado.efecto+" extra!":"¡Regresa "+(-E.dado.efecto)+"!"}</div>`:""}
     ${boardHTML()}${standings()}
@@ -210,7 +232,7 @@ function draw(force){
       const n=+mine[0],me=mine[1],mi=E.turno===n;
       h+=`<div class="row"><span class="badge" style="background:${COLORS[n]};font-size:18px">${avH(me.av,28)} Equipo ${n} · casilla ${me.pos}/${LAST}</span></div>
       ${E.ganador?`<div class="card big">🏆 ¡Ganó el Equipo ${E.ganador}!</div>`:""}
-      ${turnoBanner()}${retoHTML(false)}
+      ${turnoBanner()}${E.mover&&E.mover.eq===n?`<div class="card big" style="background:#f5b800;color:#222">¡Acertaron! Arrastra tu avatar hasta el aro que parpadea 👆</div>`:""}${retoHTML(false)}
       <div class="row"><button class="y" style="font-size:20px;padding:16px 28px" ${mi&&E.puedeTirar&&!E.ganador?"":"disabled"} onclick="tirar()">🎲 Tirar dados</button></div>
       ${dadoHTML()}${E.dado&&E.dado.efecto?`<div class="big">${E.dado.efecto>0?"¡Avanza "+E.dado.efecto+" extra!":"¡Regresa "+(-E.dado.efecto)+"!"}</div>`:""}
       ${boardHTML()}${standings()}
@@ -220,7 +242,7 @@ function draw(force){
   app.innerHTML=h;
   const w=document.getElementById("wrap"); if(w){w.scrollLeft=sx;w.scrollTop=sy;}
   if(role==="juez")qr();
-  diceSync(E);
+  diceSync(E);initDrag();
 }
 function qr(){
   const box=document.getElementById("qr"),link=`${location.origin}${location.pathname}?sala=${room}`; if(!box||location.origin==="null")return;
@@ -283,10 +305,13 @@ function rollTo(c,n,anim,seed){
     a.position.y=A[0];a.quaternion.set(A[1],A[2],A[3],A[4]);b.position.y=B[0];b.quaternion.set(B[1],B[2],B[3],B[4]);dice.draw();
     if(i<fa.length-1)requestAnimationFrame(f);else{const la=fa[fa.length-1],lb=fb[fb.length-1];if(upFace(la.slice(1))!==c||upFace(lb.slice(1))!==n-1)fin()}})(t0);
 }
+let diceSeen=false;
 function diceSync(E){
   const sl=document.getElementById("diceSlot");if(!sl||!dice)return;sl.appendChild(dice.el);dice.draw();
-  const d=E.dado;if(!d||d.c===undefined){lastT=0;return}
-  if(d.t!==lastT){const fresh=Date.now()-d.t<8000;lastT=d.t;rollTo(d.c,d.n,fresh,d.seed)}
+  const d=E.dado;
+  if(!diceSeen){diceSeen=true;if(d&&d.c!==undefined){lastT=d.t;rollTo(d.c,d.n,false)}return}
+  if(!d||d.c===undefined){lastT=0;return}
+  if(d.t!==lastT){lastT=d.t;rollTo(d.c,d.n,true,d.seed)}
 }
 /* ===== AVATARES 3D (se dibujan una vez a imagen) ===== */
 function buildAvatars(){
@@ -299,7 +324,7 @@ function buildAvatars(){
   const A={
    "🎅":g=>{S(g,.9,0xd32f2f,0,.9,0);C(g,.94,.94,.16,0x222222,0,.9,0);S(g,.5,0xffcc99,0,1.9,0);S(g,.38,0xffffff,0,1.7,.3,1.2,.9,.8);eyes(g,1.98,.44);C(g,.54,.54,.15,0xffffff,0,2.2,0);C(g,0,.52,.9,0xd32f2f,0,2.65,0);S(g,.14,0xffffff,0,3.15,0)},
    "⛄":g=>{S(g,.9,0xffffff,0,.9,0);S(g,.65,0xffffff,0,2.1,0);S(g,.48,0xffffff,0,3.0,0);eyes(g,3.1,.4,.17);C(g,0,.08,.5,0xff8a00,0,2.95,.55,Math.PI/2);C(g,.35,.35,.5,0x222222,0,3.55,0);C(g,.5,.5,.08,0x222222,0,3.32,0);S(g,.08,0x222222,0,2.2,.62);S(g,.08,0x222222,0,1.8,.62)},
-   "🐧":g=>{S(g,.9,0x222222,0,1,0,1,1.2,1);S(g,.62,0xffffff,0,.9,.38,1,1.3,.6);S(g,.55,0x222222,0,2.35,0);eyes(g,2.45,.45,.2);C(g,0,.12,.4,0xff9800,0,2.3,.55,Math.PI/2);B(g,.5,.12,.5,0xff9800,-.35,-.2,.25);B(g,.5,.12,.5,0xff9800,.35,-.2,.25);C(g,.4,.4,.22,0xd32f2f,0,2.85,0)},
+   "🐧":g=>{S(g,.9,0x222222,0,1,0,1,1.2,1);S(g,.62,0xffffff,0,.9,.62,1,1.3,.6);S(g,.55,0x222222,0,2.35,0);S(g,.12,0xffffff,-.2,2.45,.42);S(g,.12,0xffffff,.2,2.45,.42);eyes(g,2.45,.53,.2);C(g,0,.12,.4,0xff9800,0,2.3,.55,Math.PI/2);B(g,.5,.12,.5,0xff9800,-.35,-.2,.25);B(g,.5,.12,.5,0xff9800,.35,-.2,.25);C(g,.4,.4,.22,0xd32f2f,0,2.85,0)},
    "🦌":g=>{S(g,.8,0x8d5524,0,.9,0,1,.9,1.3);S(g,.5,0x8d5524,0,1.9,.7);S(g,.14,0xe53935,0,1.8,1.15);eyes(g,2.0,1.1,.2);S(g,.18,0x6d4018,-.38,2.35,.7,.6,1.3,.6);S(g,.18,0x6d4018,.38,2.35,.7,.6,1.3,.6);C(g,.05,.05,.9,0xc8a165,-.3,2.9,.7,0,.4);C(g,.05,.05,.9,0xc8a165,.3,2.9,.7,0,-.4);[-.45,.45].forEach(x=>[-.6,.6].forEach(z=>C(g,.1,.1,.7,0x6d4018,x,.15,z)))},
    "🎄":g=>{C(g,.2,.2,.6,0x6d4018,0,.3,0);C(g,0,1.1,1,0x2e7d32,0,1.1,0);C(g,0,.9,.9,0x388e3c,0,1.9,0);C(g,0,.7,.8,0x43a047,0,2.6,0);S(g,.18,0xffd600,0,3.15,0);S(g,.1,0xe53935,.45,1.2,.6);S(g,.1,0x1e88e5,-.4,1.9,.45);S(g,.1,0xe53935,.2,2.5,.4)},
    "🧝":g=>{C(g,.3,.8,1.4,0x2e7d32,0,.8,0);S(g,.5,0xffcc99,0,1.9,0);S(g,.1,0xffcc99,-.52,1.95,0,.6,1.4,.6);S(g,.1,0xffcc99,.52,1.95,0,.6,1.4,.6);eyes(g,1.98,.44);C(g,0,.55,1.0,0x2e7d32,0,2.65,0);S(g,.13,0xd32f2f,0,3.2,0);C(g,.56,.56,.14,0xd32f2f,0,2.2,0)},
@@ -310,7 +335,7 @@ function buildAvatars(){
   const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(30,1,.1,50);
   sc.add(new THREE.AmbientLight(0xffffff,.85));const L=new THREE.DirectionalLight(0xffffff,.8);L.position.set(3,5,6);sc.add(L);
   for(const k in A){const g=new THREE.Group();A[k](g);const bx=new THREE.Box3().setFromObject(g),sz=bx.getSize(new THREE.Vector3()),ct=bx.getCenter(new THREE.Vector3());
-    const w=new THREE.Group();g.position.sub(ct);w.add(g);w.scale.setScalar(3.2/Math.max(sz.x,sz.y,sz.z));w.rotation.y=-.5;sc.add(w);
+    const w=new THREE.Group();g.position.sub(ct);w.add(g);w.scale.setScalar(2.7/Math.max(sz.x,sz.y,sz.z));w.rotation.y=-.5;sc.add(w);
     cam.position.set(0,.6,7.5);cam.lookAt(0,0,0);R.render(sc,cam);AV3[k]=R.domElement.toDataURL("image/png");sc.remove(w)}
   R.dispose();
 }
