@@ -197,9 +197,20 @@ async function load(){
       try{const r=await fetch(`${DB_URL}/salas/${room}.json`,{signal:ac.signal,cache:"no-store"});return await r.json();}finally{clearTimeout(tm)}}
   return JSON.parse(localStorage.getItem("sala_"+room)||"null");}catch(e){return S}
 }
+let noRev=false;
 async function upd(o){
-  if(DB_URL){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),9000);
-    try{await fetch(`${DB_URL}/salas/${room}.json`,{method:"PATCH",body:JSON.stringify(o),signal:ac.signal});}catch(e){console.error("upd",e)}finally{clearTimeout(tm)}}
+  if(DB_URL){
+    if(noRev)delete o["estado/rev"];
+    const send=async body=>{const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),9000);
+      try{const r=await fetch(`${DB_URL}/salas/${room}.json`,{method:"PATCH",body:JSON.stringify(body),signal:ac.signal});
+        if(!r.ok){let t="";try{t=await r.text()}catch(_){}return {ok:false,st:r.status,t}}
+        return {ok:true};
+      }catch(e){return {ok:false,st:0,t:String(e&&e.message||e)}}finally{clearTimeout(tm)}};
+    let r=await send(o);
+    if(!r.ok&&Object.prototype.hasOwnProperty.call(o,"estado/rev")){ // si la base no acepta el dato curioso, se guarda lo demás sin él
+      const o2={...o};delete o2["estado/rev"];r=await send(o2);if(r.ok)noRev=true;}
+    if(!r.ok)showErr("No se pudo guardar ("+r.st+") "+String(r.t).slice(0,120));
+  }
   else{const d=JSON.parse(localStorage.getItem("sala_"+room)||"{}");
     for(const k in o){const ps=k.split("/");let n=d;for(let i=0;i<ps.length-1;i++)n=n[ps[i]]=n[ps[i]]||{};
       if(o[k]===null)delete n[ps.at(-1)];else n[ps.at(-1)]=o[k];}
@@ -215,7 +226,7 @@ async function poll(){ if(!room)return;
 function showErr(e){let t=document.getElementById("errBox");if(!t){t=document.createElement("div");t.id="errBox";t.style.cssText="position:fixed;left:6px;right:6px;bottom:6px;z-index:120;background:#8f0a1e;color:#fff;font-size:12px;padding:6px 8px;border-radius:8px;pointer-events:none;opacity:.92";document.body.appendChild(t)}
   t.textContent="⚠ Error: "+(e&&e.message||e);clearTimeout(t._h);t._h=setTimeout(()=>t.remove(),9000)}
 window.addEventListener("error",ev=>showErr(ev.message));
-(function(){const v=document.createElement("div");v.textContent="v6";v.style.cssText="position:fixed;right:6px;bottom:3px;z-index:3;font-size:10px;color:#fff;opacity:.35;pointer-events:none";document.body.appendChild(v)})();
+(function(){const v=document.createElement("div");v.textContent="v7";v.style.cssText="position:fixed;right:6px;bottom:3px;z-index:3;font-size:10px;color:#fff;opacity:.35;pointer-events:none";document.body.appendChild(v)})();
 
 /* ===== PANTALLAS ===== */
 const app=document.getElementById("app");
