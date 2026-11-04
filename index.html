@@ -270,7 +270,7 @@ es:{
  waNeed:"Sube el juego a internet para poder compartir el link.",waMsg:(r,l)=>`🎄 ¡Juega Posada conmigo! Entra a la sala ${r}:\n${l}`,
  youWon:"¡Has ganado!",merry:"🎄 ¡Feliz Navidad! 🎄",close:"Cerrar",got:"¡Entendido!",lang:"Idioma",music:"Música de Navidad (activar/silenciar)",
  langErr:"No se pudo compartir el idioma con los equipos; ellos pueden elegirlo en su pantalla.",
- rulesT:"📖 Reglas del juego",
+ rulesT:"📖 Reglas del juego",wait1:n=>`Espera: es el turno del Equipo ${n}`,wait2:"Falta que el juez marque si acertaron o fallaron",free:"🎲 Liberar dados",
  rulesL:["<b>Equipos:</b> cada equipo entra con el código de la sala (o escaneando el QR) y elige su avatar. Hay hasta 4 equipos.",
   "<b>Turnos:</b> cuando sea el turno de tu equipo, toca <b>🎲 Tirar dados</b>.",
   "<b>Los dados:</b> un dado dice la <b>categoría</b> (Música, Películas, Adivina quién soy, Conocimiento o Sorpresa) y el otro dice <b>cuántas casillas</b> avanzas.",
@@ -301,7 +301,7 @@ en:{
  waNeed:"Put the game online to be able to share the link.",waMsg:(r,l)=>`🎄 Play Posada with me! Join room ${r}:\n${l}`,
  youWon:"You won!",merry:"🎄 Merry Christmas! 🎄",close:"Close",got:"Got it!",lang:"Language",music:"Christmas music (on/off)",
  langErr:"Couldn't share the language with the teams; they can pick it on their screen.",
- rulesT:"📖 Game rules",
+ rulesT:"📖 Game rules",wait1:n=>`Wait: it is Team ${n}'s turn`,wait2:"The judge must mark right or wrong first",free:"🎲 Unlock dice",
  rulesL:["<b>Teams:</b> each team joins with the room code (or by scanning the QR) and picks an avatar. Up to 4 teams can play.",
   "<b>Turns:</b> when it's your team's turn, tap <b>🎲 Roll the dice</b>.",
   "<b>The dice:</b> one die shows the <b>category</b> (Music, Movies, Guess Who I Am, Knowledge or Surprise) and the other shows <b>how many squares</b> you move.",
@@ -842,7 +842,7 @@ function draw(force){
      <details style="margin-top:6px"><summary><small>${tr("manualCat")}</small></summary><div class="row">${CATIDS.map((id,i)=>`<button onclick="pedir(${i})">${catName(i)}</button>`).join("")}</div></details></div>
     ${dadoHTML()}${efectoHTML()}
     ${boardHTML()}${standings()}
-    <div class="card"><small>${tr("manual")}</small><div class="row">${teams().map(n=>`<span class="badge" style="background:${COLORS[n]}">${tr("teamAbbr")}${n}</span><button class="s" onclick="ajustar(${n},-1)">−1</button><button class="s" onclick="ajustar(${n},1)">+1</button>`).join("")}</div></div>`;
+    <div class="card"><small>${tr("manual")}</small> <button class="s" onclick="upd({'estado/puedeTirar':true,'estado/reto':null,'estado/dado':null,'estado/mover':null,'estado/efecto':null})">${tr("free")}</button><div class="row">${teams().map(n=>`<span class="badge" style="background:${COLORS[n]}">${tr("teamAbbr")}${n}</span><button class="s" onclick="ajustar(${n},-1)">−1</button><button class="s" onclick="ajustar(${n},1)">+1</button>`).join("")}</div></div>`;
   } else {
     const mine=Object.entries(eq()).find(([k,v])=>v.id===CID);
     h=`<h1>${tr("roomH")} ${room}</h1>`;
@@ -853,6 +853,7 @@ function draw(force){
       ${E.ganador?`<div class="card big">🏆 ${tr("won",E.ganador)} <div style="font-size:16px;color:#ffe27a;margin-top:6px">${tr("sing")}</div></div>`:""}
       ${turnoBanner()}${E.mover&&E.mover.eq===n?`<div class="card big" style="background:#f5b800;color:#222">${tr("hit",E.mover.to)}<br><small style="opacity:1;font-size:15px">${tr("dragHint")}</small></div>`:""}${E.mover&&E.mover.eq===n?boardHTML()+revelaHTML():retoRev(false)}
       <div class="row"><button class="y" style="font-size:20px;padding:16px 28px" ${mi&&E.puedeTirar&&!E.ganador?"":"disabled"} onclick="tirar()">${tr("roll")}</button></div>
+      ${(mi&&E.puedeTirar&&!E.ganador)||E.ganador?"":`<div class="row"><small>${!mi?tr("wait1",E.turno):tr("wait2")}</small></div>`}
       ${dadoHTML()}${efectoHTML()}
       ${E.mover&&E.mover.eq===n?"":boardHTML()}${standings()}
       <details class="card"><summary>${tr("changeAv")}</summary>${pickScreen()}</details>
@@ -967,7 +968,7 @@ function roundBox(sz,r,seg){
   for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);c.set(Math.max(-h,Math.min(h,v.x)),Math.max(-h,Math.min(h,v.y)),Math.max(-h,Math.min(h,v.z)));
     v.sub(c).normalize();nr.setXYZ(i,v.x,v.y,v.z);v.multiplyScalar(r).add(c);p.setXYZ(i,v.x,v.y,v.z)}
   return g}
-function loadImg(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src})}
+function loadImg(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(i);setTimeout(()=>r(i),6000);i.src=src})}
 function mkTex(c){const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
 function frame(x,S,bg){ // marco verde como el de tus dados originales
   x.fillStyle=bg;x.fillRect(0,0,S,S);
@@ -979,7 +980,7 @@ function rotFace(x,S,k){x.translate(S/2,S/2);x.rotate(FROT[k]||0);x.translate(-S
 function numTex(img,k){ // cara de número: arte de tu dado original
   const S=512,c=document.createElement("canvas");c.width=c.height=S;const x=c.getContext("2d");rotFace(x,S,k);frame(x,S,"#ffffff");
   const sz=350,r=Math.min(sz/img.width,sz/img.height);x.imageSmoothingQuality="high";
-  x.drawImage(img,S/2-img.width*r/2,S/2-img.height*r/2,img.width*r,img.height*r);return mkTex(c)}
+  if(img.naturalWidth)x.drawImage(img,S/2-img.width*r/2,S/2-img.height*r/2,img.width*r,img.height*r);return mkTex(c)}
 const FACECOL=["#f0a800","#e4283c","#188a22","#e4283c","#f0a800","#188a22"]; // colores de tu dado de categorías
 const FFAM="Lobster,'Fredoka',cursive";
 function fitLines(x,text,maxW){
@@ -1035,7 +1036,9 @@ function rollTo(c,n,anim,seed){
 }
 let diceSeen=false;
 function diceSync(E){
-  const sl=document.getElementById("diceSlot");if(!sl||!dice)return;sl.appendChild(dice.el);dice.draw();
+  const sl=document.getElementById("diceSlot");
+  if(sl&&!dice){const d0=E.dado;sl.innerHTML=d0&&d0.c!==undefined?`<div style="display:flex;height:100%;align-items:center;justify-content:center;gap:18px;font-size:68px;line-height:1"><span>${CATEMO[FACE_IDS[d0.c]]}</span><span>${FACES[d0.n-1]}</span></div>`:"";return}
+  if(!sl||!dice)return;sl.appendChild(dice.el);dice.draw();
   const d=E.dado;
   if(!diceSeen){diceSeen=true;if(d&&d.c!==undefined){lastT=d.t;rollTo(d.c,d.n,false)}return}
   if(!d||d.c===undefined){lastT=0;return}
@@ -1167,4 +1170,31 @@ for(let i=0;i<70;i++)T.push({x:Math.random()*W,y:Math.random()*H*.6,r:Math.rando
   const g=x.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*1.6);g.addColorStop(0,"rgba(255,255,255,"+p.a+")");g.addColorStop(1,"rgba(255,255,255,0)");x.fillStyle=g;x.beginPath();x.arc(p.x,p.y,p.r*1.6,0,6.3);x.fill()});requestAnimationFrame(f)})()})();
 home();
 if((new URLSearchParams(location.search).get("sala")||"").length===4)setTimeout(join,300); // QR: entra directo a la sala
+</script>
+<script>
+/* ===== Santa lanza regalos desde el saco ===== */
+(function(){
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  const sa=document.getElementById("santa");if(!sa)return;
+  const COL=[["#e53935","#ffd54f"],["#1e88e5","#fff"],["#43a047","#ff8a80"],["#fdd835","#c62828"],["#8e24aa","#ffe082"],["#ff7043","#fff"]];
+  const lay=document.createElement("div");lay.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden";document.body.appendChild(lay);
+  const G=[];let last=0,px=null,next=0;
+  function make(x,y,vx){
+    const c=COL[Math.random()*COL.length|0],s=22+Math.random()*16,e=document.createElement("div");
+    e.style.cssText=`position:absolute;left:0;top:0;width:${s}px;height:${s}px;will-change:transform;filter:drop-shadow(0 3px 3px #0008)`;
+    e.innerHTML=`<svg viewBox="0 0 40 40" width="100%" height="100%"><rect x="4" y="14" width="32" height="24" rx="3" fill="${c[0]}"/><rect x="2" y="9" width="36" height="8" rx="3" fill="${c[0]}" stroke="#0004"/><rect x="17" y="9" width="6" height="29" fill="${c[1]}"/><path d="M20 9C12 -1 6 4 12 9ZM20 9C28 -1 34 4 28 9Z" fill="${c[1]}"/></svg>`;
+    lay.appendChild(e);
+    G.push({e,x,y,vx:vx+(Math.random()*5-4),vy:-(5+Math.random()*5),r:Math.random()*360,vr:(Math.random()-.5)*14,s});
+  }
+  function tick(t){
+    const dt=Math.min(3,(t-last)/16.667||1);last=t;
+    const r=sa.getBoundingClientRect(),dx=px===null?0:(r.left-px)/dt;px=r.left;
+    if(!document.hidden&&r.right>40&&r.left<innerWidth-40&&t>next){next=t+650+Math.random()*850;make(r.left+r.width*.14,r.top+r.height*.12,dx)}
+    for(let i=G.length-1;i>=0;i--){const g=G[i];g.vy+=.22*dt;g.vx*=.998;g.x+=g.vx*dt;g.y+=g.vy*dt;g.r+=g.vr*dt;
+      g.e.style.transform=`translate(${g.x-g.s/2}px,${g.y-g.s/2}px) rotate(${g.r}deg)`;
+      if(g.y>innerHeight+60){g.e.remove();G.splice(i,1)}}
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
 </script></body></html>
