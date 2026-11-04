@@ -640,7 +640,7 @@ async function tirar(){
   const t=S.estado.turno,seed=Date.now()%1000000000|0;
   const fa=simDie(seed+1),fb=simDie(seed+2),c=upFace(fa[fa.length-1].slice(1)),n=upFace(fb[fb.length-1].slice(1))+1;
   const ci=CATIDS.indexOf(FACE_IDS[c]);
-  await upd({"estado/dado":{c,n,t:Date.now(),eq:t,seed},"estado/reto":{c:ci,i:Math.random()*nRetos(ci)|0,t:Date.now()},"estado/puedeTirar":false,"estado/rev":null});
+  await upd({"estado/dado":{c,n,t:Date.now(),eq:t,seed},"estado/reto":{c:ci,i:Math.random()*nRetos(ci)|0},"estado/puedeTirar":false,"estado/rev":null});
 }
 function acerto(){
   const E=S.estado,t=E.turno,e=eq()[t];if(!t||!e)return;
@@ -702,7 +702,7 @@ function initDrag(){
 }
 function nextTurn(){const ts=teams();if(!ts.length)return;const t=S.estado.turno;const n=ts.find(x=>x>t)||ts[0];
   upd({"estado/turno":n,"estado/reto":null,"estado/dado":null,"estado/mover":null,"estado/puedeTirar":true});}
-function pedir(c){upd({"estado/reto":{c,i:Math.random()*nRetos(c)|0,t:Date.now()},"estado/puedeTirar":false,"estado/rev":null});}
+function pedir(c){upd({"estado/reto":{c,i:Math.random()*nRetos(c)|0},"estado/puedeTirar":false,"estado/rev":null});}
 function ajustar(n,d){const e=eq()[n];upd({["equipos/"+n+"/pos"]:Math.max(0,Math.min(LAST,e.pos+d))});}
 
 let dragT=0;
@@ -1021,8 +1021,9 @@ function tmrHTML(){return '<span id="tmr" class="tmr" onclick="tmrTap()" role="t
 function tmrTap(){TM.i=(TM.i+1)%3;try{localStorage.tmrI=TM.i}catch(_){}TM.t0=Date.now();TM.done=false;tmrTick()}
 function tmrDing(){try{if(MU.on&&MU.ctx&&MU.ctx.state==="running"){const t=MU.ctx.currentTime;mNote(mf(84),t,.4,.2);mNote(mf(79),t+.2,.5,.18)}}catch(_){}}
 function tmrTick(){
-  const el=document.getElementById("tmr"),r=S&&S.estado&&S.estado.reto;if(!el||!r)return;
-  const k=r.c+":"+r.i+":"+(r.t||0);if(k!==TM.key){TM.key=k;TM.t0=Date.now();TM.done=false} // cada equipo cuenta con su propio reloj (sin depender de relojes ajenos)
+  const r=S&&S.estado&&S.estado.reto;if(!r){TM.key="";return} // sin pregunta: se rearma para la siguiente
+  const el=document.getElementById("tmr");if(!el)return;
+  const k=r.c+":"+r.i;if(k!==TM.key){TM.key=k;TM.t0=Date.now();TM.done=false} // cada equipo cuenta con su propio reloj (sin depender de relojes ajenos)
   const D=TM.O[TM.i];
   if(!D){el.className="tmr off";el.textContent="⏱";return}
   const left=Math.max(0,D-Math.floor((Date.now()-TM.t0)/1000));
