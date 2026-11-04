@@ -87,7 +87,7 @@ body{background:linear-gradient(#040a24 0%,#0a2350 42%,#0c4a3c 100%) fixed}
 #santa .leg.f{animation:lf .8s ease-in-out infinite}
 #santa .leg.d1{animation-delay:-.1s}#santa .leg.d2{animation-delay:-.2s}#santa .leg.d3{animation-delay:-.3s}
 
-@keyframes fly{0%{transform:translate(-110%,10px) rotate(3deg)}20%{transform:translate(calc(50vw - 55%),-14px) rotate(0)}40%,100%{transform:translate(calc(100vw + 5%),8px) rotate(-3deg)}}
+@keyframes fly{0%{transform:translate(-110%,10px)}20%{transform:translate(calc(50vw - 55%),-14px)}40%,100%{transform:translate(calc(100vw + 5%),8px)}}
 @media(prefers-reduced-motion:reduce){#santa{animation:none;display:none}}
 .card{background:linear-gradient(160deg,#1f8a55,#0b3a28)}
 .pl{background:linear-gradient(#000b,#0007)}
@@ -103,6 +103,14 @@ h1{text-shadow:0 2px 0 #7a0f24,0 0 24px #ffd36a99}
 .qcard .qcat{display:inline-block;background:linear-gradient(#ff5468,#c8102e);color:#fff;font-weight:700;border-radius:999px;padding:3px 14px;font-size:15px;box-shadow:0 2px 6px #0006}
 .qcard .qtxt{font-size:clamp(20px,5.4vw,28px);font-weight:700;line-height:1.25;margin:10px 4px 4px}
 .qcard .ans{margin:10px 0 0}
+/* cronómetro discreto junto a la categoría */
+.qhd{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap}
+.tmr{display:inline-flex;align-items:center;gap:3px;padding:2px 10px;border-radius:999px;font-weight:600;font-size:14px;line-height:1.4;font-variant-numeric:tabular-nums;color:#5a2a0a;background:#3a1a0812;border:1.5px solid #3a1a0830;cursor:pointer;user-select:none;-webkit-user-select:none;opacity:.8;transition:background .3s,color .3s,opacity .3s}
+.tmr.off{opacity:.4;padding:2px 8px}
+.tmr.warn{color:#8a4a00;background:#f0a80038;border-color:#f0a800;opacity:1}
+.tmr.end{color:#fff;background:#c8102e;border-color:#c8102e;opacity:1;animation:tmrp .5s ease-in-out 6 alternate}
+@keyframes tmrp{to{transform:scale(1.14)}}
+@media(prefers-reduced-motion:reduce){.tmr.end{animation:none}}
 .revela{margin:10px 0;padding:12px 14px;border-radius:18px;text-align:center;background:linear-gradient(160deg,#1f8a55,#0b3a28);border:3px solid var(--gold);box-shadow:0 0 18px #f2cf7a66;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
 .revela .rt{font-weight:700;font-size:18px}
 .revela .dato{margin-top:8px;padding:10px;border-radius:12px;background:#fff8e1;color:#3a1a08;font-weight:600;font-size:clamp(15px,4.2vw,19px);line-height:1.3}
@@ -613,7 +621,7 @@ function standings(){
 function retoHTML(juez){
   const r=S.estado.reto; if(!r)return `<div class="big">${tr("waiting")}</div>`;
   const [q,a]=RET(r.c,r.i);
-  return `<div class="qcard"><span class="qcat">${catName(r.c)}</span><div class="qtxt">❓ ${q}</div>${juez?`<div class="ans">${tr("answer")}${a}</div>`:""}</div>`;
+  return `<div class="qcard"><div class="qhd"><span class="qcat">${catName(r.c)}</span>${tmrHTML()}</div><div class="qtxt">❓ ${q}</div>${juez?`<div class="ans">${tr("answer")}${a}</div>`:""}</div>`;
 }
 function retoRev(juez){const rv=revelaHTML();return S.estado.reto?retoHTML(juez)+rv:rv+retoHTML(juez)} // sin reto: la respuesta va ARRIBA de «Esperando reto…»
 function revelaHTML(){
@@ -632,7 +640,7 @@ async function tirar(){
   const t=S.estado.turno,seed=Date.now()%1000000000|0;
   const fa=simDie(seed+1),fb=simDie(seed+2),c=upFace(fa[fa.length-1].slice(1)),n=upFace(fb[fb.length-1].slice(1))+1;
   const ci=CATIDS.indexOf(FACE_IDS[c]);
-  await upd({"estado/dado":{c,n,t:Date.now(),eq:t,seed},"estado/reto":{c:ci,i:Math.random()*nRetos(ci)|0},"estado/puedeTirar":false,"estado/rev":null});
+  await upd({"estado/dado":{c,n,t:Date.now(),eq:t,seed},"estado/reto":{c:ci,i:Math.random()*nRetos(ci)|0,t:Date.now()},"estado/puedeTirar":false,"estado/rev":null});
 }
 function acerto(){
   const E=S.estado,t=E.turno,e=eq()[t];if(!t||!e)return;
@@ -694,7 +702,7 @@ function initDrag(){
 }
 function nextTurn(){const ts=teams();if(!ts.length)return;const t=S.estado.turno;const n=ts.find(x=>x>t)||ts[0];
   upd({"estado/turno":n,"estado/reto":null,"estado/dado":null,"estado/mover":null,"estado/puedeTirar":true});}
-function pedir(c){upd({"estado/reto":{c,i:Math.random()*nRetos(c)|0},"estado/puedeTirar":false,"estado/rev":null});}
+function pedir(c){upd({"estado/reto":{c,i:Math.random()*nRetos(c)|0,t:Date.now()},"estado/puedeTirar":false,"estado/rev":null});}
 function ajustar(n,d){const e=eq()[n];upd({["equipos/"+n+"/pos"]:Math.max(0,Math.min(LAST,e.pos+d))});}
 
 let dragT=0;
@@ -743,7 +751,7 @@ function draw(force){
   app.innerHTML=h;
   const w=document.getElementById("wrap"); if(w){w.scrollLeft=sx;w.scrollTop=sy;}
   if(role==="juez")qr();
-  efectoToast(E);diceSync(E);initDrag();celebrar(E);
+  efectoToast(E);diceSync(E);initDrag();celebrar(E);tmrTick();
   if(role==="equipo"&&E.mover&&eq()[E.mover.eq]&&eq()[E.mover.eq].id===CID){const k=E.mover.eq+":"+E.mover.to;if(moveScrollKey!==k){moveScrollKey=k;setTimeout(()=>{const w=document.getElementById("wrap");if(w)w.scrollIntoView({behavior:"smooth",block:"center"})},150)}}else if(!E.mover)moveScrollKey="";
 }
 function waShare(){
@@ -1007,6 +1015,22 @@ function musicToggle(){MU.on=!MU.on;try{localStorage.musica=MU.on?"on":"off"}cat
 function musicBtn(){const b=document.getElementById("musicBtn");if(!b)return;b.textContent=MU.on?"🔔":"🔕";b.classList.toggle("off",!MU.on);b.title=tr("music");b.setAttribute("aria-label",tr("music"))}
 ["pointerdown","touchend","click","keydown"].forEach(ev=>addEventListener(ev,()=>{if(MU.on&&(!MU.ctx||MU.ctx.state!=="running")&&!document.hidden)musicStart()},{passive:true}));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)musicStop();else if(MU.on&&MU.ctx)musicStart()});
+/* ===== CRONÓMETRO: cuenta atrás casual por pregunta. Toca el chip: 30 s → 60 s → apagado ===== */
+const TM={O:[30,60,0],i:(()=>{try{const v=+localStorage.tmrI;return v>=0&&v<3?v:0}catch(_){return 0}})(),key:"",t0:0,done:false};
+function tmrHTML(){return '<span id="tmr" class="tmr" onclick="tmrTap()" role="timer"></span>'}
+function tmrTap(){TM.i=(TM.i+1)%3;try{localStorage.tmrI=TM.i}catch(_){}TM.t0=Date.now();TM.done=false;tmrTick()}
+function tmrDing(){try{if(MU.on&&MU.ctx&&MU.ctx.state==="running"){const t=MU.ctx.currentTime;mNote(mf(84),t,.4,.2);mNote(mf(79),t+.2,.5,.18)}}catch(_){}}
+function tmrTick(){
+  const el=document.getElementById("tmr"),r=S&&S.estado&&S.estado.reto;if(!el||!r)return;
+  const k=r.c+":"+r.i+":"+(r.t||0);if(k!==TM.key){TM.key=k;TM.t0=Date.now();TM.done=false} // cada equipo cuenta con su propio reloj (sin depender de relojes ajenos)
+  const D=TM.O[TM.i];
+  if(!D){el.className="tmr off";el.textContent="⏱";return}
+  const left=Math.max(0,D-Math.floor((Date.now()-TM.t0)/1000));
+  el.textContent="⏱ "+Math.floor(left/60)+":"+String(left%60).padStart(2,"0");
+  el.className="tmr"+(left===0?" end":left<=10?" warn":"");
+  if(left===0&&!TM.done){TM.done=true;tmrDing()}
+}
+setInterval(tmrTick,250);
 (function(){const bar=document.createElement("div");bar.id="topbtns";
   const b=document.createElement("button");b.id="rulesBtn";b.className="y";b.textContent=tr("rules");b.onclick=showRules;
   const m=document.createElement("button");m.id="musicBtn";m.className="y";m.onclick=musicToggle;
