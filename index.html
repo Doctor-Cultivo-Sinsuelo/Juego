@@ -1344,6 +1344,7 @@ const RC={},RETL=l=>RC[l]||(RC[l]=Object.fromEntries(CATIDS.map(id=>[id,DECK[id]
 const OLDV={es:"⚠️ Esta pantalla tiene una versión más vieja del juego que la del juez. Recarga la página (actualiza) para ver la misma pregunta.",en:"⚠️ This screen has an older version of the game than the judge. Reload the page to see the same question."};
 const RET=(c,i)=>{const id=CATIDS[c],L=RETL(LANG)[id][i]||RETL("es")[id][i];if(L)return L;const m=OLDV[LANG]||OLDV.es;return [m,"—",undefined,{k:"q",o:null,ok:0}]};
 const nRetos=c=>DECK[CATIDS[c]].length;
+(function(){try{const s=JSON.stringify(DECK);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;const d=document.createElement("div");d.id="dvStamp";d.textContent="v"+(h>>>0).toString(36)+(typeof IS_APP!=="undefined"&&IS_APP?" app":" web");d.style.cssText="position:fixed;left:6px;bottom:2px;font:10px monospace;opacity:.45;color:#fff;z-index:5;pointer-events:none";document.body.appendChild(d)}catch(_){}})();
 const efxOf=r=>{const X=r&&RET(r.c,r.i)[3];return X&&X.fx?X:null};
 const isSec=X=>!!X&&(X.k==="mime"||X.k==="tabu");
 const myPhone=e=>memb(e).findIndex(x=>x===MID||x===CID)+1; // nº de celular dentro del equipo (1..6)
@@ -1352,7 +1353,7 @@ function setTabu(k){upd({"estado/tabu":k},true).then(ok=>{if(!ok)alert(tr("tabuR
 function phRow(E){const r=E.reto,X=r&&RET(r.c,r.i)[3],e=eq()[E.turno];if(!e||!r||!(isSec(X)||r.c===1))return "";const n=memb(e).length,s=tabuSel(E);if(n<2)return "";
   return `<div class="qph">📱 ${jt("whoActs")} ${Array.from({length:n},(_,i)=>`<button class="${s===i+1?"g on":"s"}" onclick="setTabu(${i+1})">${i+1}</button>`).join("")}</div>`}
 function fxTxt(X,E){const d=E&&E.dado,n=d&&d.n&&d.eq===E.turno?d.n:0;
-  return X.fx==="skip"?"⏭ "+tr("fxSkip"):X.fx==="back"?"⏪ "+tr("fxBack"):X.fx==="swap"?"🔁 "+tr("fxSwap"):"🎲 "+(n?tr("fxDice",n):tr("fxDiceN"))}
+  return X.fx==="skip"?tr("fxSkip"):X.fx==="back"?"⏪ "+tr("fxBack"):X.fx==="swap"?"🔁 "+tr("fxSwap"):"🎲 "+(n?tr("fxDice",n):tr("fxDiceN"))}
 function optsOf(X,r,E){if(!X.o)return null;const p=X.o.map((s,i)=>[s,i===X.ok]);
   if(X.k==="mc"){const R=rng((((E&&E.dado&&E.dado.t)||0)+r.c*131+r.i*7)%2147483647||1);for(let i=p.length-1;i>0;i--){const j=R()*(i+1)|0;[p[i],p[j]]=[p[j],p[i]]}}return p}
 /* ===== VOTO: cada equipo toca la opción que cree correcta. Se guarda en estado/voto/<equipo> = nº de opción mostrada (0,1,2) ===== */
@@ -1907,7 +1908,7 @@ function draw(force){
     <div class="jv"><div class="card jstat">${jStat(E)}</div>
     <div class="jl"><div class="card jtop${(teams().length>=2||E.reto||E.dado)?" jmin":""}"><div class="jqr">${link?`<div id="qr"></div>`:`<div class="jcode">${room}</div>`}</div>
      <div class="jside"><button class="g jwa" onclick="waShare()">${tr("wa")}</button><div class="jlang" title="${tr("lang")}">🌐<select id="jsel" onchange="pickLang(this.value)">${Object.keys(LANGS).map(l=>`<option value="${l}"${l===LANG?" selected":""}>${LANGS[l]}</option>`).join("")}</select></div></div></div>
-    ${E.ganador?`<div class="card big">🏆 ${tr("won",E.ganador)} <div class="sing">${tr("merry")}</div><div class="sing">${tr("sing")}</div> <button class="y" onclick="reiniciarSala(true)">${tr("reset")}</button></div>`:""}
+    ${E.ganador?`<div class="card big">🏆 ${tr("youWon")} <div class="sing">${tr("won",E.ganador)}</div><div class="sing">${tr("merry")}</div><div class="sing">${tr("sing")}</div> <button class="y" onclick="reiniciarSala(true)">${tr("reset")}</button></div>`:""}
     ${turnoBanner()}${E.mover?`<div class="card big" style="background:#f5b800;color:#222">${tr("moveInfo",E.mover.eq,E.mover.to)}<div class="row"><button class="s" onclick="finMove()">${tr("moveFor")}</button></div></div>`:""}
     <div class="card jctlcard"><div class="qslot" style="--qh:0px">${P?"":retoRev(true)}</div>${P?"":phRow(E)+pavoRow(E)}
      <div class="row jctl"><button class="y" ${canShowAns(E)?"":"disabled"} onclick="mostrarResp()">${E.reto&&E.reto.show?tr("shown"):tr("showAns")}</button>
@@ -1972,10 +1973,10 @@ function celebrar(E){
 }
 function cerrarWin(){const w=document.getElementById("win");if(w){w._stop&&w._stop();w.remove()}}
 function showWin(n){
-  const e=eq()[n]||{av:"🎄"},mine=hasMe(e)&&role==="equipo";
+  const e=eq()[n]||{av:"🎄"},isJ=role==="juez",mine=(hasMe(e)&&role==="equipo")||isJ;
   const w=document.createElement("div");w.id="win";
   w.innerHTML=`<canvas id="fx"></canvas><div class="winbox trophy" style="--wc:${COLORS[n]}"><div class="wart"><div class="wplaque">${tr("teamAbbr")||"E"}${n}</div></div><canvas class="wsnow"></canvas><div class="wpanel"><div class="wtext"><div class="winav">${avH(e.av)}</div>
-    <div class="wintitle${mine?" long":""}">${mine?tr("youWon"):tr("won",n)}</div><div class="winsub">${tr("merry")}</div>
+    <div class="wintitle${mine?" long":""}">${mine?tr("youWon"):tr("won",n)}</div><div class="winsub">${isJ?tr("won",n):tr("merry")}</div>
     <div class="winsing">${tr("sing")}</div></div><button class="y wclose" onclick="cerrarWin()">${tr("close")}</button></div></div>`;
   document.body.appendChild(w);const stopFx=fireworks(w.querySelector("#fx")),stopSn=winSnow(w.querySelector(".wsnow"));w._stop=()=>{stopFx();stopSn()};
   try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400])}catch(_){}
