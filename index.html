@@ -2471,4 +2471,31 @@ if((new URLSearchParams(location.search).get("sala")||"").length===4)setTimeout(
   }
   requestAnimationFrame(tick);
 })();
-</script></body></html>
+</script><script id="kick30">
+(function(){
+  const MSG={es:"La sala se reinició. Escribe el código o escanea el QR para volver a entrar.",en:"The room was reset. Enter the code or scan the QR to join again.",pt:"A sala foi reiniciada. Digite o código ou escaneie o QR para entrar de novo.",fr:"La salle a été réinitialisée. Saisis le code ou scanne le QR pour revenir."};
+  let sawMine=false,lastJ=0,seenTeams=false,seenRoom=null,bad=0;
+  function toast(){const t=document.createElement("div");t.textContent="🔄 "+(MSG[LANG]||MSG.es);
+    t.style.cssText="position:fixed;left:8px;right:8px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:200;background:#0b3a28;color:#ffe27a;border:2px solid #ffd36a;border-radius:14px;padding:10px 14px;text-align:center;font-weight:800;font-size:15px;box-shadow:0 6px 18px #000a";
+    document.body.appendChild(t);setTimeout(()=>t.remove(),7000)}
+  window.salirDeSala=function(){
+    streamStop();room=null;role=null;myTeam=null;JOINED=0;S=null;sig="";selT=0;selA="";selName="";zoom=false;
+    sawMine=false;seenTeams=false;seenRoom=null;bad=0;
+    try{history.replaceState(null,"",location.pathname)}catch(_){}
+    try{cerrarWin()}catch(_){}
+    const d=document.getElementById("diceOv");if(d)d.classList.remove("on","tap");
+    const f=document.getElementById("efToast");if(f)f.remove();
+    draw(true);toast()};
+  setInterval(()=>{
+    if(role!=="equipo"||!room||!S||!S.estado){bad=0;return}
+    if(seenRoom!==room){seenRoom=room;seenTeams=false;sawMine=false;lastJ=0}
+    if(JOINED!==lastJ){lastJ=JOINED;sawMine=false}
+    const n=teams().length;if(n>0)seenTeams=true;
+    if(JOINED&&eq()[JOINED])sawMine=true;
+    const wiped=JOINED?(sawMine&&!eq()[JOINED]):(seenTeams&&n===0);
+    bad=wiped?bad+1:0;
+    if(bad>=2)salirDeSala();
+  },1500);
+})();
+</script>
+</body></html>
