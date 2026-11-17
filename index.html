@@ -285,7 +285,7 @@ button.av:disabled .orn img{animation:none;filter:grayscale(.7)}
 .stargl{position:absolute;width:46%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:1;mix-blend-mode:screen;background:radial-gradient(circle,#fff6b8aa 0,#ffd54f66 30%,#ffd54f00 64%);animation:starP 2.6s ease-in-out infinite}
 @keyframes starP{50%{opacity:.45;transform:translate(-50%,-50%) scale(1.12)}}
 .lbl{position:absolute;transform:translate(-50%,-50%);z-index:3;pointer-events:none;font-weight:800;font-size:10px;font-size:clamp(9px,3.2cqw,26px);line-height:1.1;padding:.15em .6em;border-radius:999px;border:2px solid #fff;box-shadow:0 2px 6px #000a;white-space:nowrap}
-.lbl.st{background:#c62828;color:#fff;animation:lblP 1.8s ease-in-out infinite}
+.lbl.st{background:#c62828;color:#fff}
 .lbl.go{background:#f5b800;color:#3a2600}
 @keyframes lblP{50%{box-shadow:0 0 14px 3px #ff5442}}
 .sp{position:absolute;transform:translate(-50%,-50%);z-index:2;pointer-events:none;font-weight:800;font-size:9px;font-size:clamp(8px,2.5cqw,20px);line-height:1;padding:.18em .45em;border-radius:999px;border:1.5px solid #fff;box-shadow:0 1px 4px #000a;color:#fff}
@@ -1738,7 +1738,7 @@ function boardHTML(){
     return `<div ${mv?'id="mytk"':""} class="tk${mv?" drag":""}${S.estado.turno===n?" tkon":""}" style="left:${x+off[0]}%;top:${y+off[1]}%">${avH(e.av,0,COLORS[n])}</div>`}).join("");
   const nums=Array.from({length:LAST-1},(_,i)=>{const q=cell(1,i+1);return `<span class="sqn" style="left:${q[0]}%;top:${q[1]}%">${i+1}</span>`}).join("");
   const st=cell(1,0),go=cell(1,LAST);
-  const marks=`${STAR_HTML()}<div class="startglow" style="left:${st[0]}%;top:${st[1]}%"></div>`
+  const marks=`${STAR_HTML()}`
     +`<div class="lbl go" style="left:${go[0]+26}%;top:${go[1]}%">⭐ ${tr("goalLbl")}</div><div class="lbl st" style="left:${st[0]}%;top:${st[1]+5.8}%">${tr("startLbl")}</div>`;
   const dest=S.estado.mover?(()=>{const m=S.estado.mover,d=cell(m.eq,m.to),mine=role==="equipo"&&eq()[m.eq]&&hasMe(eq()[m.eq]);return `<div class="destglow" style="left:${d[0]}%;top:${d[1]}%"></div><div class="dest${mine?" tap":""}" ${mine?'onpointerdown="finMove()" onclick="finMove()"':""} style="left:${d[0]}%;top:${d[1]}%"></div>`})():"";
   return `<div class="bslot"><div id="wrap"${zoom?' style="max-height:80vh"':""}><div id="board" style="width:${zoom?200:100}%"><img src="${BOARD_URL}" alt="Board">${marks}${nums}${tk}${dest}</div></div></div>
@@ -2433,11 +2433,11 @@ function tmrTick(){
 }
 setInterval(tmrTick,250);
 /* el juez aplica solo el efecto literal de las tarjetas Sorpresa unos segundos después de mostrarlas (o antes con «Aplicar ya») */
-let FXK="",FXT=0,FXB=false;const FX_MS=6000;
+let FXK="",FXT=0,FXB=false;const FX_MS=4000; // la tarjeta se queda 4 s a la vista de los equipos (se cuenta desde que sale la tarjeta, + margen de sincronía)
 function fxTick(){
   const E=S&&S.estado,r=E&&E.reto,X=r&&RET(r.c,r.i)[3];
   if(role!=="juez"||!X||!X.fx||E.mover||E.ganador||E.puedeTirar||dicePend(E)){FXK="";return}
-  const k=r.c+":"+r.i+":"+((E.dado&&E.dado.t)||0);if(k!==FXK){FXK=k;FXT=Date.now()}
+  const k=r.c+":"+r.i+":"+((E.dado&&E.dado.t)||0);if(k!==FXK){FXK=k;FXT=Math.max(Date.now(),ROLL.card||0)+1200}
   const left=Math.ceil((FX_MS-(Date.now()-FXT))/1000);
   document.querySelectorAll(".fxcd").forEach(el=>el.textContent=left>0?" ("+left+")":"");
   if(left<=0&&!FXB){FXB=true;applyFx().finally(()=>{FXB=false})}
